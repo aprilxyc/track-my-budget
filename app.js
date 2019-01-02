@@ -46,9 +46,9 @@ return { // public method that can be accessed by other modules
         // How can we specify the ID for each new item?
         // ID = last ID + 1
         if (type === 'exp') {
-            newItem = new Expense(IDBCursor, des, val);
+            newItem = new Expense(ID, des, val);
         } else if (type === 'inc') {
-            newItem = new Income(IDBCursor, des, val);
+            newItem = new Income(ID, des, val);
         }
 
         // Push it into our data structure
@@ -105,9 +105,11 @@ var UIController = (function() {
 
             // Replace the placeholder text with some actual data
             // hthml has their own methods just like arrays
+            
             newHtml = html.replace('%id%', obj.id);
             newHtml = newHtml.replace('%description%', obj.description);
             newHtml = newHtml.replace('%value%', obj.value);
+    
 
             // Insert the HTML into the DOM
             // insert adjacent html element
@@ -117,8 +119,6 @@ var UIController = (function() {
         getDOMstrings: function() { // exposing DOMStrings to public
             return DOMstrings;
         }
-
-
 
     };
 
@@ -157,7 +157,6 @@ var controller = (function(budgetCtrl, UICtrl) {
 
         // 1. Get the field input data
         input = UICtrl.getInput(); // controller calls method then getInput method does something and returns 
-        console.log(input);
 
         // 2. Add the item to te budget controller
         newItem = budgetCtrl.addItem(input.type, input.description, input.value);
