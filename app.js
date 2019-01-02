@@ -9,7 +9,23 @@ var budgetController = (function() {
         this.id = id;
         this.description = description;
         this.value = value;
+        this.percentage = -1; // before it is defined, initialise to -1
     };
+
+    // used to calculate the percentage
+    Expense.prototype.calcPercentage = function(totalIncome) {
+        
+        if (totalIncome > 0) {
+            this.percentage = Math.round((this.value / totalIncome) * 100)
+        } else {
+            this.percentage = -1;
+        }
+    };
+
+    // used to get the percentage
+    Expense.prototype.getPercentage = function() {
+        return this.percentage;
+    }
 
     var Income = function(id, description, value) {
         this.id = id;
@@ -109,6 +125,32 @@ return { // public method that can be accessed by other modules
     
     },
 
+    calculatePercentages: function() {
+
+        /*
+        example:
+        a = 20
+        b = 10
+        c = 40
+        income = 100
+        a = 20/100 = 20%
+        b = 10 / 100 = 10%
+        c = 40 / 100 = 40%
+        */ 
+        //get expense array and go through the array
+        data.allItems.exp.forEach(function(cur) {
+            cur.calcPercentage(data.totals.inc);
+        })
+        
+    },
+
+    getPercentages: function() {
+        var allPerc = data.allItems.exp.map(function(cur) {
+            return cur.getPercentage(); // return result of get percentage method
+        }); // map returns osmething and stores it intot he variable while for each does not
+        return allPerc;
+    },
+
     getBudget: function() {
         return {
             budget: data.budget,
@@ -141,9 +183,51 @@ var UIController = (function() {
         incomeLabel: '.budget__income--value',
         expensesLabel: '.budget__expenses--value',
         percentageLabel: '.budget__expenses--percentage',
-        container: '.container'
+        container: '.container',
+        expensesPercLabel: '.item__percentage',
+        dateLabel: '.budget__title--month'
     };
 
+    var formatNumber = function(num, type) {
+        var numSplit, int, dec;
+
+        /*
+        + or - before number
+        exactly 2 decimal points
+        comma separating the thousands
+
+        2310.4567 --> + 2,310.46
+        2000 --> + 2,000.00
+        */
+
+        num = Math.abs(num);
+        num = num.toFixed(2); // method to keep 2 dec numbers
+
+        // split number into int part and decimal part
+        numSplit = num.split('.')
+        int = numSplit[0];
+
+        if (int.length > 3) {
+            int = int.substr(0, int.length - 3) + ',' + int.substr(int.length - 3, 3); // start at position 0 and read 1 element
+            // Then start at position 1 and read 3 numbers
+        }
+
+        dec = numSplit[1];
+
+        type === 'exp' ? sign = '-' : sign = '+';
+
+        // return the string altogether (operator first)
+        return (type === 'exp' ? sign = '-' : sign = '+')  + ' ' + int + '.' + dec;
+
+    };
+
+    // FIRST CLASS FUNCTION -- GO OVER THIS PART!
+    var nodeListForEach = function(list, callback) {
+        // for loop that for each interation will call our callback function
+        for (var i = 0; i < list.length; i++) {
+            callback(list[i], i); // first class functions
+        }
+    };
 
     // method to get input
     // needs to be used in other controller so will be public method
@@ -175,7 +259,7 @@ var UIController = (function() {
             
             newHtml = html.replace('%id%', obj.id);
             newHtml = newHtml.replace('%description%', obj.description);
-            newHtml = newHtml.replace('%value%', obj.value);
+            newHtml = newHtml.replace('%value%', formatNumber(obj.value, type));
     
 
             // Insert the HTML into the DOM
@@ -214,16 +298,72 @@ var UIController = (function() {
 
         // displays budget onto the UI
         displayBudget: function(obj) {
-            
-            document.querySelector(DOMstrings.budgetLabel).textContent = obj.budget;
-            document.querySelector(DOMstrings.incomeLabel).textContent = obj.totalInc;
-            document.querySelector(DOMstrings.expensesLabel).textContent = obj.totalExp;
+            var type;
+            obj.budget > 0 ? type === 'inc': type === 'exp';
+
+            document.querySelector(DOMstrings.budgetLabel).textContent = formatNumber(obj.budget, type);
+            document.querySelector(DOMstrings.incomeLabel).textContent = formatNumber(obj.totalInc, 'inc');
+            document.querySelector(DOMstrings.expensesLabel).textContent = formatNumber(obj.totalExp, 'exp');
         
             if (obj.percentage > 0) {
                 document.querySelector(DOMstrings.percentageLabel).textContent = obj.percentage + '%';
             } else {
                 document.querySelector(DOMstrings.percentageLabel).textContent = '---';
             }
+
+        },
+
+        displayPercentages: function(percentages) {
+
+            // each element is a node
+            var fields = document.querySelectorAll(DOMstrings.expensesPercLabel);
+
+            // create our own foreach function for node lists just like arrays
+            nodeListForEach(fields, function(current, index) {
+
+                if (percentages[index] > 0) {
+                    current.textContent = percentages[index] + '%';
+                } else {
+                    current.texttcontetnt = '---';
+                }
+            });
+            // When we call nodeListForEach function, we pass  a callback
+            //function into it. This funciton is assigned to this callback parameter above
+            // In the nodeListForEach, we are going to loop over our list e.g. 5 times
+            // if 5 elements and in each iteration, the callback gets called
+            // Code will be executed 5 times and we will have access to current element
+            // and to the current index because these have been passed into the callback
+            // in here i.e. callback(list[i], i)
+        },
+
+        displayMonth: function() {
+
+            var now, year, month, months;
+            now = new Date(); // returns date of today by not passing anything
+
+            months = ['January', 'February', 'March', 'April', 'May', 'June',
+        'July', 'August', 'September', 'October', 'November', 'December']
+            year = now.getFullYear();
+            month = now.getMonth();
+            document.querySelector(DOMstrings.dateLabel).textContent = months[month] + ' ' + year;
+
+        },
+
+        changedType: function() {
+            // change CSS class for this
+            // select elements that will receive this class then select the button and give
+            // it a red class
+            
+            var fields = document.querySelectorAll(
+                // this returns node list. To loop over it, we cannot use
+                // the for each method but can use the function we wrote nodeListForEach
+                DOMstrings.inputType + ',' + 
+                DOMstrings.inputDescription + ',' +
+                DOMstrings.inputValue);
+
+                nodeListForEach(fields, function(cur) {
+                    cur.classList.toggle('red-focus');
+                });
 
         },
 
@@ -260,6 +400,8 @@ var controller = (function(budgetCtrl, UICtrl) {
 
         document.querySelector(DOM.container).addEventListener('click', ctrlDeleteItem);
 
+        // callback function
+        document.querySelector(DOM.inputType).addEventListener('change', UICtrl.changedType);
     };
 
     var updateBudget = function() {
@@ -274,6 +416,18 @@ var controller = (function(budgetCtrl, UICtrl) {
         UICtrl.displayBudget(budget);
     };
 
+    var updatePercentages = function() {
+        //1. Calculate percentages
+        budgetCtrl.calculatePercentages();
+
+        //2. Read percentages from the budget controller
+        var percentages = budgetCtrl.getPercentages();
+
+        //3. Update the UI with the new percentages
+        UICtrl.displayPercentages(percentages);
+
+    };
+
 
     // functino called when someone hits enter key
     var ctrlAddItem = function() {
@@ -285,7 +439,7 @@ var controller = (function(budgetCtrl, UICtrl) {
 
         if (input.description !== "" && !isNaN(input.value) && input.value > 0) {
 
-            // 2. Add the item to te budget controller
+            // 2. Add the item to the budget controller
             newItem = budgetCtrl.addItem(input.type, input.description, input.value);
 
             // 3. Add the item to the UI
@@ -297,6 +451,8 @@ var controller = (function(budgetCtrl, UICtrl) {
             // 5. Calculate and update budget
             updateBudget();
 
+            // 6. Calculate and update percentages
+            updatePercentages();
         }
 
     };
@@ -323,6 +479,9 @@ var controller = (function(budgetCtrl, UICtrl) {
 
             // 3. Update and show the new budget
             updateBudget(); // function that updates budget
+
+            // 4. Calculate and update percentages
+            updatePercentages();
         }
 
 
@@ -330,8 +489,9 @@ var controller = (function(budgetCtrl, UICtrl) {
 
     return { // event listeners only going to be set up as soon as we call the init function
         init: function() {
-            // Starts the program
+            // Starts the program HAPPENS AT THE BEGINNING
             console.log('Application has started');
+            UICtrl.displayMonth();
             UICtrl.displayBudget(
                 {
                     budget: 0,
