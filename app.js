@@ -183,9 +183,22 @@ var UIController = (function() {
             document.querySelector(element).insertAdjacentHTML('beforeend', newHtml);
         },
 
+        // need a class name or id from html to manipulate this!
+        deleteListItem: function(selectorID) {
+
+            var myElement;
+
+            myElement = document.getElementById(selectorID);
+            // in javascript, we can delete a child by moving up first, then going back to the child
+            // get parent node from element then remove the chidl, which is this element
+            myElement.parentNode.removeChild(myElement);
+
+        },
+
         // clear fields fater entering it
         clearFields: function() {
             var fields, fieldsArr;
+            
             // This returns a list
             fields = document.querySelectorAll(DOMstrings.inputDescription + ', ' + DOMstrings.inputValue);
             
@@ -306,9 +319,10 @@ var controller = (function(budgetCtrl, UICtrl) {
             budgetCtrl.deleteItem(type, ID);
 
             // 2. Delete the item from the UI
-
+            UICtrl.deleteListItem(itemID);
 
             // 3. Update and show the new budget
+            updateBudget(); // function that updates budget
         }
 
 
