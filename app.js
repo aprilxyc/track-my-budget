@@ -324,7 +324,7 @@ var UIController = (function() {
                 if (percentages[index] > 0) {
                     current.textContent = percentages[index] + '%';
                 } else {
-                    current.texttcontetnt = '---';
+                    current.textContent = '---';
                 }
             });
             // When we call nodeListForEach function, we pass  a callback
